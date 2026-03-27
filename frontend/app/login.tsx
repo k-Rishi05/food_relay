@@ -6,8 +6,7 @@ import { AntDesign } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import { makeRedirectUri } from 'expo-auth-session';
-import * as ImagePicker from 'expo-image-picker';
-import { Camera, ShieldCheck } from 'lucide-react-native';
+import { ShieldCheck } from 'lucide-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -18,7 +17,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [rollNumber, setRollNumber] = useState('');
-  const [studentIdImage, setStudentIdImage] = useState(null);
   
   const [loading, setLoading] = useState(false);
 
@@ -57,27 +55,14 @@ export default function LoginScreen() {
     setLoading(false);
   };
 
-  const handlePickStudentId = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (!result.canceled) setStudentIdImage(result.assets[0].uri);
-  };
+
 
   const handleSignUp = async () => {
-    if (!email || !password || !phone || !rollNumber || !studentIdImage) {
-      return Alert.alert('Error', 'Please fill all fields and upload your Student ID proof.');
+    if (!email || !password || !phone || !rollNumber) {
+      return Alert.alert('Error', 'Please fill all fields.');
     }
     setLoading(true);
     try {
-      const ext = studentIdImage.split('.').pop() || 'jpg';
-      const fileName = `student_ids/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-      const response = await fetch(studentIdImage);
-      const blob = await response.blob();
-      
-      const { error: uploadError } = await supabase.storage.from('images').upload(fileName, blob, { contentType: `image/${ext}` });
-      if (uploadError) throw new Error(uploadError.message);
-      
-      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fileName);
-
       const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
       if (authError) throw new Error(authError.message);
       
@@ -86,7 +71,6 @@ export default function LoginScreen() {
           id: authData.user.id,
           phone,
           roll_number: rollNumber,
-          student_id_url: publicUrl,
           is_verified: false
         });
         if (profileError) throw new Error(profileError.message);
@@ -114,12 +98,6 @@ export default function LoginScreen() {
             <>
               <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor="#666" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
               <TextInput style={styles.input} placeholder="University Roll Number" placeholderTextColor="#666" value={rollNumber} onChangeText={setRollNumber} autoCapitalize="characters" />
-              
-              <TouchableOpacity style={styles.imageActionBtn} onPress={handlePickStudentId}>
-                <Camera size={18} color="#FFF" style={{marginRight: 8}} />
-                <Text style={styles.imageActionBtnText}>{studentIdImage ? 'Student ID Attached' : 'Attach Student ID card'}</Text>
-              </TouchableOpacity>
-              {studentIdImage && <Image source={{ uri: studentIdImage }} style={styles.thumbImage} />}
             </>
           )}
 

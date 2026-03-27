@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../services/supabase';
-import { MapPin, CheckCircle, ArrowLeft, ShieldCheck, User as UserIcon, Zap, PhoneCall } from 'lucide-react-native';
+import { MapPin, CheckCircle, ShieldCheck, User as UserIcon, Zap, PhoneCall } from 'lucide-react-native';
+import Header from '../../components/Header';
 
 export default function OrderDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -74,12 +75,7 @@ export default function OrderDetailsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Dynamic Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}><ArrowLeft size={24} color="#FFF" /></TouchableOpacity>
-        <Text style={styles.headerTitle}>Relay Intel</Text>
-        <View style={{ width: 44 }} />
-      </View>
+      <Header showBackButton />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
@@ -164,9 +160,6 @@ export default function OrderDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#050505' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 65, paddingBottom: 16, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)', backgroundColor: '#050505', zIndex: 10 },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFF', letterSpacing: -0.5 },
   scrollContent: { padding: 20, paddingBottom: 60 },
   statusBlock: { alignItems: 'center', marginBottom: 32, marginTop: 10 },
   statusLabel: { fontSize: 12, fontWeight: '800', color: '#666', letterSpacing: 2, marginBottom: 8 },
