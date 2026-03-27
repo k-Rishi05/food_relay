@@ -5,6 +5,11 @@ const cors = require("cors");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const crypto = require("crypto");
+const { OAuth2Client } = require("google-auth-library");
+const jwt = require("jsonwebtoken");
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const JWT_SECRET = process.env.JWT_SECRET || "hackathon_secret";
 
 const User = require("./models/User");
 const Order = require("./models/Order");
@@ -29,28 +34,55 @@ const s3Client = new S3Client({
   },
 });
 
-// Create a dummy user if none exists (for hackathon purposes to easily get a user ID)
-app.post("/api/users", async (req, res) => {
+// Auth Middleware
+const requireAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token)
+    return res.status(401).json({ error: "Unauthorized: Missing Token" });
   try {
-    const user = new User(req.body);
-    await user.save();
-    res.status(201).json(user);
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch (err) {
+    res.status(401).json({ error: "Unauthorized: Invalid Token" });
+  }
+};
+
+// POST /api/auth/google: Exchange Google ID Token for JWT
+app.post("/api/auth/google", async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID, // Ensure you add this to .env
+    });
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    let user = await User.findOne({ googleId });
+    if (!user) {
+      user = new User({ googleId, email, name, picture });
+      await user.save();
+    }
+
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    res.json({ token, user });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(401).json({ error: "Invalid Google Token" });
   }
 });
 
 // --- API Routes for Orders ---
 
 // POST /api/orders: Create a new order
-app.post("/api/orders", async (req, res) => {
+app.post("/api/orders", requireAuth, async (req, res) => {
   try {
-    const { requester_id, type, location_url, item_description, image_url } =
-      req.body;
+    const { type, location_url, item_description, image_url } = req.body;
 
-    // In a real app we'd validate the requester_id exists.
     const order = new Order({
-      requester_id,
+      requester_id: req.userId,
       type,
       location_url,
       item_description,
@@ -79,14 +111,10 @@ app.get("/api/orders/pending", async (req, res) => {
 });
 
 // PATCH /api/orders/:id/accept: Update status and assign fulfiller
-app.patch("/api/orders/:id/accept", async (req, res) => {
+app.patch("/api/orders/:id/accept", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { fulfiller_id } = req.body; // The user who is accepting the order
-
-    if (!fulfiller_id) {
-      return res.status(400).json({ error: "fulfiller_id is required" });
-    }
+    const fulfiller_id = req.userId; // Securely get fulfiller from token
 
     const order = await Order.findByIdAndUpdate(
       id,
@@ -107,7 +135,7 @@ app.patch("/api/orders/:id/accept", async (req, res) => {
 // --- R2 Storage Route ---
 
 // GET /api/upload-url: Generate a pre-signed S3/R2 URL
-app.get("/api/upload-url", async (req, res) => {
+app.get("/api/upload-url", requireAuth, async (req, res) => {
   try {
     // We expect the client to send the content type they want to upload, Default to jpeg.
     const contentType = req.query.contentType || "image/jpeg";
