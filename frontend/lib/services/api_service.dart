@@ -68,8 +68,7 @@ class ApiService {
 
   Future<Order> createOrder({
     required String type,
-    required double lat,
-    required double lng,
+    required String locationUrl,
     required String description,
     required File imageFile,
   }) async {
@@ -83,8 +82,7 @@ class ApiService {
       body: json.encode({
         'requester_id': currentUserId,
         'type': type,
-        'location_lat': lat,
-        'location_lng': lng,
+        'location_url': locationUrl,
         'item_description': description,
         'image_url': imageUrl,
       }),

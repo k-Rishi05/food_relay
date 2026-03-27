@@ -17,12 +17,8 @@ const orderSchema = new mongoose.Schema(
       enum: ["gate", "restaurant"],
       required: true,
     },
-    location_lat: {
-      type: Number,
-      required: true,
-    },
-    location_lng: {
-      type: Number,
+    location_url: {
+      type: String,
       required: true,
     },
     item_description: {

@@ -45,21 +45,14 @@ app.post("/api/users", async (req, res) => {
 // POST /api/orders: Create a new order
 app.post("/api/orders", async (req, res) => {
   try {
-    const {
-      requester_id,
-      type,
-      location_lat,
-      location_lng,
-      item_description,
-      image_url,
-    } = req.body;
+    const { requester_id, type, location_url, item_description, image_url } =
+      req.body;
 
     // In a real app we'd validate the requester_id exists.
     const order = new Order({
       requester_id,
       type,
-      location_lat,
-      location_lng,
+      location_url,
       item_description,
       image_url,
       // status defaults to 'pending'
